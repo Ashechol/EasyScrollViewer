@@ -552,7 +552,7 @@ MonoBehaviour:
   m_MovementType: 2
   m_Elasticity: 0.1
   m_Inertia: 1
-  m_DecelerationRate: 0.135
+  m_DecelerationRate: 0.132
   m_ScrollSensitivity: 1
   m_Viewport: {fileID: 491041232}
   m_HorizontalScrollbar: {fileID: 0}
@@ -616,6 +616,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   testData: {fileID: 11400000, guid: 11a10b00ca45b7f44881c102bc8d8525, type: 2}
   scrollViewItem: {fileID: 1063670547885203205, guid: cf861132b08e6ec4aa5d1ad292171156, type: 3}
+  topIndex: 0
+  bottomIndex: 0
 --- !u!1 &1849398651
 GameObject:
   m_ObjectHideFlags: 0
@@ -649,11 +651,11 @@ RectTransform:
   m_Father: {fileID: 491041232}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: -0.000015258789, y: 0}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 494, y: 0}
-  m_Pivot: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &1849398653
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -671,7 +673,7 @@ MonoBehaviour:
     m_Right: 10
     m_Top: 10
     m_Bottom: 10
-  m_ChildAlignment: 4
+  m_ChildAlignment: 7
   m_Spacing: 10
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1

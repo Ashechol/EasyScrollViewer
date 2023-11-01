@@ -19,10 +19,12 @@ public class EasyScrollViewer : MonoBehaviour
 
     private readonly LinkedList<ScrollViewItem> _items = new();
 
-    private readonly Vector2 _anchorBottom = new Vector2(0, 0);
-    private readonly Vector2 _anchorTop = new Vector2(0, 1);
-    
+    private readonly Vector2 _anchorBottom = new Vector2(0.5f, 0);
+    private readonly Vector2 _anchorTop = new Vector2(0.5f, 1);
 
+    public int topIndex;
+    public int bottomIndex;
+    
     private void Awake()
     {
         _scrollRect = GetComponent<ScrollRect>();
@@ -33,6 +35,14 @@ public class EasyScrollViewer : MonoBehaviour
         _spacing = _content.GetComponent<VerticalLayoutGroup>().spacing;
         
         _scrollRect.onValueChanged.AddListener(OnScrollRectValueChanged);
+        
+        testData.messages.Clear();
+        for (var i = 0; i < 100; ++i)
+        {
+            testData.messages.Add("dawdaw" + (i % 2 == 0 ? "\nwaeqwe" : "awd"));
+        }
+
+        testData.messages[10] = "dadaw\ndwadaw\ndwadawd\ndawd";
     }
 
     private void Start()
@@ -42,14 +52,18 @@ public class EasyScrollViewer : MonoBehaviour
 
     private void Initialize()
     {
-        foreach (var num in testData.nums)
+        foreach (var message in testData.messages)
         {
             var item = Instantiate(scrollViewItem, _content).GetComponent<ScrollViewItem>();
-            item.Refresh(num.ToString());
+            item.Refresh(message);
             _items.AddLast(item);
 
             if (_items.Count == 8)
+            {
+                topIndex = 8;
+                bottomIndex = 0;
                 break;
+            }
         }
     }
 
@@ -57,54 +71,79 @@ public class EasyScrollViewer : MonoBehaviour
     {
         var topItem = _items.First.Value;
         var lastItem = _items.Last.Value;
-        
-        _fitter.enabled = false;
-        _group.enabled = false;
-        
+
+        if (_fitter.enabled)
+        {
+            _fitter.enabled = false;
+            _group.enabled = false;
+
+            foreach (var item in _items)
+                item.SetAnchor(_anchorBottom, _anchorBottom);
+        }
+
         if (_scrollRect.velocity.y > 0 && IsOutOfViewport(topItem.rect))
         {
-            foreach (var item in _items)
-            {
-                if (item.rect.anchorMin == _anchorTop) break;
-                
-                item.rect.anchorMin = item.rect.anchorMax = _anchorTop;
-                item.rect.anchoredPosition -= Vector2.up * _content.rect.height;
-                item.rect.ForceUpdateRectTransforms();
-            }
+            if (bottomIndex <= 0) return;
             
-            topItem.rect.anchoredPosition =
-                lastItem.rect.anchoredPosition - Vector2.up * (topItem.rect.rect.height + _spacing);
+            _content.sizeDelta -= Vector2.up * (topItem.Height + _spacing);
+            
+            // topItem.Refresh(testData.messages[--bottomIndex]);
+            // topItem.rect.position =
+            //     lastItem.rect.position - Vector3.up * (topItem.Height + _spacing);
 
+            StartCoroutine(OperationB());
+            
             _items.AddLast(topItem);
             _items.RemoveFirst();
-            
-            var rect = _content.rect;
-            if (_content.anchorMin != _anchorTop) return;
-                _content.anchorMax = _content.anchorMin = _anchorTop;
-            _content.sizeDelta = new Vector2(rect.width, rect.height + topItem.rect.rect.height + _spacing);
+        
+            --topIndex;
         }
         else if (_scrollRect.velocity.y < 0 && IsOutOfViewport(lastItem.rect, false))
         {
-            foreach (var item in _items)
-            {
-                if (item.rect.anchorMin == _anchorBottom) break;
-                
-                item.rect.anchorMin = item.rect.anchorMax = _anchorBottom;
-                item.rect.anchoredPosition += Vector2.up * _content.rect.height;
-                item.rect.ForceUpdateRectTransforms();
-            }
+            if (topIndex >= testData.nums.Count) return;
             
-            lastItem.rect.anchoredPosition = 
-                topItem.rect.anchoredPosition + Vector2.up * (lastItem.rect.rect.height + _spacing);
-            
+            // lastItem.Refresh(testData.messages[topIndex]);
+            // lastItem.rect.position = 
+            //     topItem.rect.position + Vector3.up * (topItem.Height + _spacing);
+            //
+            // _content.sizeDelta += Vector2.up * (lastItem.Height + _spacing);
+
+            StartCoroutine(OperationA());
+        
             _items.AddFirst(lastItem);
             _items.RemoveLast();
             
-            var rect = _content.rect;
-            if (_content.anchorMin != _anchorBottom);
-                _content.anchorMax = _content.anchorMin = _anchorBottom;
-            _content.sizeDelta = new Vector2(rect.width, rect.height - lastItem.rect.rect.height + _spacing);
+            ++topIndex;
+            ++bottomIndex;
         }
+    }
+
+    private IEnumerator OperationA()
+    {
+        var topItem = _items.First.Value;
+        var lastItem = _items.Last.Value;
+        
+        lastItem.Refresh(testData.messages[topIndex]);
+
+        yield return null;
+        
+        lastItem.rect.position = 
+            topItem.rect.position + Vector3.up * (topItem.Height + _spacing);
+            
+        _content.sizeDelta += Vector2.up * (lastItem.Height + _spacing);
+    }
+
+    private IEnumerator OperationB()
+    {
+        var topItem = _items.First.Value;
+        var lastItem = _items.Last.Value;
+        
+        topItem.Refresh(testData.messages[--bottomIndex]);
+
+        yield return null;
+        
+        topItem.rect.position =
+            lastItem.rect.position - Vector3.up * (topItem.Height + _spacing);
     }
 
     public bool IsOutOfViewport(RectTransform itemRect, bool checkTop = true)
