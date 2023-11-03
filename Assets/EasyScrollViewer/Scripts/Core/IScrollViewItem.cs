@@ -12,7 +12,7 @@ namespace EasyScrollViewer
     /// <typeparam name="T"></typeparam>
     public interface IScrollViewItem
     {
-        Vector3 LastPosition { get; set; }
+        // Vector3 LastPosition { get; set; }
         RectTransform RectTrans { get; }
         ContentSizeFitter Fitter { get; }
         
@@ -21,24 +21,25 @@ namespace EasyScrollViewer
         /// </summary>
         /// <param name="data">Item 对应的数据类</param>
         void Refresh(ScrollViewItemData data);
-
+        
+        /// <summary>
+        /// 保持位置不动的情况更新锚点
+        /// </summary>
+        /// <param name="min">左和下</param>
+        /// <param name="max">右和上</param>
         void SetAnchor(Vector2 min, Vector2 max)
         {
-            LastPosition = RectTrans.position;
+            var lastPosition = RectTrans.position;
 
             RectTrans.anchorMin = min;
             RectTrans.anchorMax = max;
 
-            RectTrans.position = LastPosition;
+            RectTrans.position = lastPosition;
         }
 
         void SetPivot(Vector2 pivot)
         {
-            LastPosition = RectTrans.position;
-
             RectTrans.pivot = pivot;
-            
-            RectTrans.position = LastPosition;
         }
 
         float Height => RectTrans.rect.height;
