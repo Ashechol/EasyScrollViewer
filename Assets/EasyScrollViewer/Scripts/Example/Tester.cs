@@ -38,17 +38,17 @@ namespace EasyScrollViewer
                 g += 0.02f;
                 b += 0.03f;
                 
-                _scrollViewer.Refresh(0);
+                _scrollViewer.Refresh(0, Vector2.one);
             }
             else if (Input.GetKeyDown(KeyCode.Alpha2))
             {
                 _dataList.Add(new MessageData("Ash", $"Hello There {_index++}"));
-                _scrollViewer.Refresh(10);
+                _scrollViewer.Refresh(_dataList.Count - 1, Vector2.zero);
             }
             else if (Input.GetKeyDown(KeyCode.Alpha3))
             {
                 _dataList.Add(new MessageData("Ash", $"Hello There\nHi {_index++}"));
-                _scrollViewer.Refresh(0);
+                _scrollViewer.Refresh(_dataList.Count - 1, Vector2.zero);
             }
         }
     }

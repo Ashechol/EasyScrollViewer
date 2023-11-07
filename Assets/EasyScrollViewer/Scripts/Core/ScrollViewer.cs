@@ -10,13 +10,9 @@ namespace EasyScrollViewer
     public class ScrollViewer : ScrollRect
     {
         public GameObject itemGameObject;
-    
-        // private readonly List<IScrollViewItem> _items = new();
         private List<ScrollViewItemData> _dataList = new();
         private readonly Dictionary<string, IScrollViewItem> _itemDict = new();
-    
-        // private ScrollRect _scrollRect;
-        // private RectTransform _content;
+        
         private ContentSizeFitter _fitter;
         private LayoutGroup _group;
     
@@ -27,7 +23,6 @@ namespace EasyScrollViewer
         private int _maxItemNum;
         public float itemMinHeight;
         public float boundHeight;
-        public Vector2 lastPosition;
     
         private readonly Vector3[] _corners = new Vector3[4];
     
@@ -37,15 +32,10 @@ namespace EasyScrollViewer
         protected override void Awake()
         {
             base.Awake();
-            
-            // _scrollRect = GetComponent<ScrollRect>();
-            // _content = _scrollRect.content;
     
             _group = content.GetComponent<VerticalLayoutGroup>();
             _fitter = content.GetComponent<ContentSizeFitter>();
             _spacing = content.GetComponent<VerticalLayoutGroup>().spacing;
-            
-            // _scrollRect.onValueChanged.AddListener(OnScrollRectValueChanged);
     
             itemGameObject = content.GetChild(0).gameObject;
         }
@@ -77,14 +67,16 @@ namespace EasyScrollViewer
             _maxItemNum = _itemDict.Count;
         
             _dataList = dataList;
-            lastPosition = normalizedPosition;
         }
         
-        public void Refresh(int startIndex)
+        public void Refresh(int startIndex, Vector2 normPos)
         {
             _activatedItemNum = Mathf.Min(_maxItemNum, _dataList.Count);
             _frontIndex = Mathf.Min(startIndex, _dataList.Count - _activatedItemNum);
             _backIndex = Mathf.Min(_frontIndex + _activatedItemNum, _dataList.Count);
+
+            _group.enabled = true;
+            _fitter.enabled = true;
         
             var items = GetComponentsInChildren<IScrollViewItem>(true);
         
@@ -93,12 +85,22 @@ namespace EasyScrollViewer
                 items[i].SetActive(true);
                 items[i].Refresh(_dataList[_frontIndex + i]);
             }
-        
             for (var i = _activatedItemNum; i < _maxItemNum; ++i)
             {
                 items[i].SetActive(false);
             }
-            ExecuteInNextFrame(() => boundHeight = content.sizeDelta.y);
+            
+            if (_itemDict["Item"].RectTrans.anchorMin != Top)
+                foreach (var pair in _itemDict)
+                    pair.Value.SetAnchor(Top, Top);
+            SetPivot(content, Top);
+            
+            ExecuteInNextFrame(() =>
+            {
+                boundHeight = content.sizeDelta.y;
+                normalizedPosition = normPos;
+                _sign = 1;
+            });
         }
 
         private int _sign = 1;
@@ -109,36 +111,20 @@ namespace EasyScrollViewer
         /// <param name="index">复用后对应的数据下标</param>
         private void ReuseFront(int index)
         {
-            // var front = _content.GetChild(0).GetComponent<IScrollViewItem>();
-            // var back = _content.GetChild(_items.Count - 1).GetComponent<IScrollViewItem>();
-
             var front = _itemDict[content.GetChild(0).name];
             var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
             
             front.Refresh(_dataList[index]);
             
-            front.RectTrans.anchoredPosition = back.RectTrans.anchoredPosition - Vector2.up * (back.Height + _spacing);
+            AdjustContentBound(front, Vector2.up);
+            boundHeight -= front.Height;
+ 
             front.RectTrans.SetAsLastSibling();
-                
-            if (content.sizeDelta.y - (front.Height + _spacing) < boundHeight && _sign < 0)
+            ExecuteInNextFrame(() =>
             {
-                if (content.pivot != Top)
-                {
-                    m_ContentStartPosition -= SetPivot(content, Top);
-                    
-                    foreach (var pair in _itemDict)
-                        pair.Value.SetAnchor(Top, Top);
-                }
-                    
-                _sign = 1;
-            }
-                
-            content.sizeDelta += Vector2.up * (_sign * (front.Height + _spacing));
-            
-            // ExecuteInNextFrame(() =>
-            // {
-            //     
-            // });
+                boundHeight += front.Height;
+                front.RectTrans.anchoredPosition = back.RectTrans.anchoredPosition - Vector2.up * (back.Height + _spacing); 
+            });
         }
     
         /// <summary>
@@ -147,41 +133,56 @@ namespace EasyScrollViewer
         /// <param name="index">复用后对应的数据下标</param>
         private void ReuseBack(int index)
         {
-            // var front = _content.GetChild(0).GetComponent<IScrollViewItem>();
-            // var back = _content.GetChild(_items.Count - 1).GetComponent<IScrollViewItem>();
-            
             var front = _itemDict[content.GetChild(0).name];
             var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
             
             back.Refresh(_dataList[index]);
             
-            if (content.sizeDelta.y - (back.Height + _spacing) < boundHeight && _sign > 0)
+            AdjustContentBound(back, Vector2.down);
+            boundHeight -= back.Height;
+            
+            back.RectTrans.SetAsFirstSibling();
+            ExecuteInNextFrame(() =>
+            {
+                boundHeight += back.Height;
+                back.RectTrans.anchoredPosition = front.RectTrans.anchoredPosition + Vector2.up * (back.Height + _spacing);
+            });
+        }
+        
+        /// 调整 Content 的边界
+        private void AdjustContentBound(IScrollViewItem item, Vector2 direction)
+        {
+            var amount = item.Height + _spacing;
+            
+            if (content.sizeDelta.y - amount < boundHeight && _sign * direction.y < 0 )
             {
                 if (content.pivot != Bottom)
                 {
                     m_ContentStartPosition -= SetPivot(content, Bottom);
-
+            
                     foreach (var pair in _itemDict)
                         pair.Value.SetAnchor(Bottom, Bottom);
-                    
-                    _sign = -1;
                 }
+                else
+                {
+                    m_ContentStartPosition -= SetPivot(content, Top);
+                    
+                    foreach (var pair in _itemDict)
+                        pair.Value.SetAnchor(Top, Top);
+                }
+
+                _sign = -_sign;
             }
             
-            content.sizeDelta -= Vector2.up * (back.Height + _spacing) * _sign;
-            
-            back.RectTrans.anchoredPosition = front.RectTrans.anchoredPosition + Vector2.up * (back.Height + _spacing);
-            back.RectTrans.SetAsFirstSibling();
-            
-            // ExecuteInNextFrame(() =>
-            // {
-            //     
-            // });
+            if (_sign * direction.y > 0)
+                ExecuteInNextFrame(() => content.sizeDelta += (item.Height + _spacing) * _sign * direction);
+            else
+                content.sizeDelta += amount * _sign * direction;
         }
 
         public override void OnDrag(PointerEventData eventData)
         {
-            OnScrollRectValueChanged(eventData);
+            ReuseItem(eventData);
             
             base.OnDrag(eventData);
         }
@@ -205,38 +206,30 @@ namespace EasyScrollViewer
             return checkTop ? itemBottom > viewportTop : itemTop < viewportBottom;
         }
     
-        private void OnScrollRectValueChanged(PointerEventData pointer)
+        private void ReuseItem(PointerEventData pointer)
         {
             if (!_dragging) return;
-
-            if (_fitter.enabled)
-            {
-                _fitter.enabled = false;
-                _group.enabled = false;
-            }
             
-            ExecuteInNextFrame(() =>
-            {
-                var delta = pointer.position.y - _lastPointerPosition.y;
+            _fitter.enabled = false;
+            _group.enabled = false;
+            
+            var delta = pointer.position.y - _lastPointerPosition.y;
+            if (delta != 0)
                 _lastPointerPosition = pointer.position; 
-                
-                // var front = _content.GetChild(0).GetComponent<IScrollViewItem>();
-                // var back = _content.GetChild(_items.Count - 1).GetComponent<IScrollViewItem>();
-            
-                var front = _itemDict[content.GetChild(0).name];
-                var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
-            
-                if (delta > 0 && _backIndex < _dataList.Count && IsOutOfViewport(front.RectTrans))
-                {
-                    ReuseFront(_backIndex++);
-                    ++_frontIndex;
-                }
-                else if (delta < 0 && _frontIndex > 0 && IsOutOfViewport(back.RectTrans, false))
-                {
-                    ReuseBack(--_frontIndex);
-                    --_backIndex;
-                }
-            });
+        
+            var front = _itemDict[content.GetChild(0).name];
+            var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
+        
+            if (delta > 0 && _backIndex < _dataList.Count && IsOutOfViewport(front.RectTrans))
+            {
+                ReuseFront(_backIndex++);
+                ++_frontIndex;
+            }
+            else if (delta < 0 && _frontIndex > 0 && IsOutOfViewport(back.RectTrans, false))
+            {
+                ReuseBack(--_frontIndex);
+                --_backIndex;
+            }
         }
     
         /// <summary>
@@ -264,16 +257,6 @@ namespace EasyScrollViewer
             target.pivot = pivot;
 
             return offset;
-        }
-
-        private void SetAnchor(RectTransform target, Vector2 anchor)
-        {
-            var lastPosition = target.position;
-
-            target.anchorMin = anchor;
-            target.anchorMax = anchor;
-
-            target.position = lastPosition;
         }
 
         private bool _dragging;

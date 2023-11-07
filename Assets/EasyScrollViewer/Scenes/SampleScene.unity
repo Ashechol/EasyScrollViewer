@@ -278,7 +278,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9053720142496889849, guid: 5bc82a4e1ec667a4fb2e4b38a3091656, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 0
+      value: 330
       objectReference: {fileID: 0}
     - target: {fileID: 9053720142496889849, guid: 5bc82a4e1ec667a4fb2e4b38a3091656, type: 3}
       propertyPath: m_SizeDelta.y
@@ -314,7 +314,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9053720142496889849, guid: 5bc82a4e1ec667a4fb2e4b38a3091656, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 175
       objectReference: {fileID: 0}
     - target: {fileID: 9053720142496889849, guid: 5bc82a4e1ec667a4fb2e4b38a3091656, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -672,7 +672,6 @@ MonoBehaviour:
   itemGameObject: {fileID: 1088231411}
   itemMinHeight: 75
   boundHeight: 0
-  lastPosition: {x: 0, y: 0}
 --- !u!114 &1484533015
 MonoBehaviour:
   m_ObjectHideFlags: 0
