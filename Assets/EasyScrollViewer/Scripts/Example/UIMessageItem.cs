@@ -29,9 +29,6 @@ public class UIMessageItem : MonoBehaviour, IScrollViewItem
     public void Refresh(string text, TextAlignmentOptions alignment = TextAlignmentOptions.Center)
     {
         _textMesh.text = text;
-            
-        // 在下一帧更新
-        LayoutRebuilder.MarkLayoutForRebuild(RectTrans);
     }
         
     /// <summary>

@@ -1,231 +1,278 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using EasyScrollViewer;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class ScrollViewer : MonoBehaviour
+namespace EasyScrollViewer
 {
-    public GameObject itemGameObject;
-    
-    private readonly List<IScrollViewItem> _items = new();
-    private readonly List<ScrollViewItemData> _datas = new();
-
-    private ScrollRect _scrollRect;
-    private RectTransform _content;
-    private ContentSizeFitter _fitter;
-    private LayoutGroup _group;
-    
-    private float _spacing;
-    private int _frontIndex;
-    private int _backIndex;
-    public float itemMinHeight;
-    
-    private readonly Vector3[] _corners = new Vector3[4];
-    
-    private static readonly Vector2 bottom = new Vector2(0.5f, 0);
-    private static readonly Vector2 top = new Vector2(0.5f, 1);
-
-    private void Awake()
+    public class ScrollViewer : ScrollRect
     {
-        _scrollRect = GetComponent<ScrollRect>();
-        _content = _scrollRect.content;
-
-        _group = _content.GetComponent<VerticalLayoutGroup>();
-        _fitter = _content.GetComponent<ContentSizeFitter>();
-        _spacing = _content.GetComponent<VerticalLayoutGroup>().spacing;
-            
-        _scrollRect.onValueChanged.AddListener(OnScrollRectValueChanged);
-
-        itemGameObject = _content.GetChild(0).gameObject;
-    }
-
-    private int _index;
-    public float r, g, b;
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            AddItem(new ColorfulData(new Color(r, g, b)));
-
-            r += 0.01f;
-            g += 0.02f;
-            b += 0.03f;
-        }
-        else if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            AddItem(new MessageData("Ash", $"Hello There {_index++}"));
-        }
-        else if (Input.GetKeyDown(KeyCode.Alpha3))
-        {
-            AddItem(new MessageData("Ash", $"Hello There\nHi {_index++}"));
-        }
-    }
-    
-    private void Start()
-    {
-        Initialize();
-    }
+        public GameObject itemGameObject;
+        private List<ScrollViewItemData> _dataList = new();
+        private readonly Dictionary<string, IScrollViewItem> _itemDict = new();
         
-    /// <summary>
-    /// 初始化
-    /// </summary>
-    private void Initialize()
-    {
-        _frontIndex = 0;
-        _backIndex = 0;
-            
-        if (itemMinHeight == 0)
-            Debug.LogWarning("[UIChatViewer]: 请设置列表每项的最小大小");
-            
-        var maxNum = Math.Ceiling(_scrollRect.viewport.rect.height / (itemMinHeight + _spacing)) + 1;
-            
-        // 预加载列表项
-        _items.Add(itemGameObject.GetComponent<IScrollViewItem>());
-        for (var i = 1; i < maxNum; ++i)
-        {
-            var item = Instantiate(itemGameObject, _content).GetComponent<IScrollViewItem>();
-            item.SetName($"Item {i.ToString()}");
-            item.SetActive(false);
-            _items.Add(item);
-        }
-        itemGameObject.SetActive(false);
-    }
+        private ContentSizeFitter _fitter;
+        private LayoutGroup _group;
     
-    /// <summary>
-    /// 添加消息
-    /// </summary>
-    /// <param name="messageInfo">消息信息</param>
-    public void AddItem(ScrollViewItemData data)
-    {
-        _datas.Add(data);
-            
-        if (_backIndex < _items.Count)
-        {
-            _items[_backIndex].SetActive(true);
-            _items[_backIndex++].Refresh(data);
-                
-            DoInNextFrame(() =>
-            {
-                var amount = _content.rect.height - _scrollRect.viewport.rect.height;
-                _content.anchoredPosition = Vector2.up * (amount > 0 ? amount : 0);
-            });
-        }
-        else if (_backIndex == _datas.Count - 1)
-        {
-            if (_fitter.enabled)
-            {
-                _fitter.enabled = false;
-                _group.enabled = false;
+        private float _spacing;
+        private int _frontIndex;
+        private int _backIndex;
+        private int _activatedItemNum;
+        private int _maxItemNum;
+        public float itemMinHeight;
+        public float boundHeight;
+    
+        private readonly Vector3[] _corners = new Vector3[4];
+    
+        private static readonly Vector2 Bottom = new Vector2(0.5f, 0);
+        private static readonly Vector2 Top = new Vector2(0.5f, 1);
 
-                foreach (var item in _items)
-                {
-                    item.SetAnchor(top, top);
-                    item.SetPivot(top);
-                    item.Fitter.enabled = true;
-                }
+        protected override void Awake()
+        {
+            base.Awake();
+    
+            _group = content.GetComponent<VerticalLayoutGroup>();
+            _fitter = content.GetComponent<ContentSizeFitter>();
+            _spacing = content.GetComponent<VerticalLayoutGroup>().spacing;
+    
+            itemGameObject = content.GetChild(0).gameObject;
+        }
+        
+        /// 初始化
+        public void Initialize(List<ScrollViewItemData> dataList)
+        {
+            _frontIndex = 0;
+            _backIndex = 0;
+            
+            if (itemMinHeight == 0)
+                Debug.LogWarning("[ScrollViewer]: 请设置列表每项的最小大小");
+            
+            var maxNum = Math.Ceiling(viewport.rect.height / (itemMinHeight + _spacing)) + 1;
+            
+            // 预加载列表项
+            for (var i = 1; i < maxNum; ++i)
+            {
+                var item = Instantiate(itemGameObject, content).GetComponent<IScrollViewItem>();
+                item.SetName($"Item {i.ToString()}");
+                item.SetActive(false);
+                _itemDict.Add(item.Name, item);
             }
-                
-            ReuseFront(_backIndex++);
-            _frontIndex++;
-                
-            DoInNextFrame(() =>
+        
+            itemGameObject.name = "Item";
+            itemGameObject.SetActive(false);
+            _itemDict.Add("Item", itemGameObject.GetComponent<IScrollViewItem>());
+        
+            _maxItemNum = _itemDict.Count;
+        
+            _dataList = dataList;
+        }
+        
+        public void Refresh(int startIndex, Vector2 normPos)
+        {
+            _activatedItemNum = Mathf.Min(_maxItemNum, _dataList.Count);
+            _frontIndex = Mathf.Min(startIndex, _dataList.Count - _activatedItemNum);
+            _backIndex = Mathf.Min(_frontIndex + _activatedItemNum, _dataList.Count);
+
+            _group.enabled = true;
+            _fitter.enabled = true;
+        
+            var items = GetComponentsInChildren<IScrollViewItem>(true);
+        
+            for (var i = 0; i < _activatedItemNum; ++i)
             {
-                var amount = _content.rect.height - _scrollRect.viewport.rect.height;
-                _content.anchoredPosition = Vector2.up * (amount > 0 ? amount : 0);
+                items[i].SetActive(true);
+                items[i].Refresh(_dataList[_frontIndex + i]);
+            }
+            for (var i = _activatedItemNum; i < _maxItemNum; ++i)
+            {
+                items[i].SetActive(false);
+            }
+            
+            if (_itemDict["Item"].RectTrans.anchorMin != Top)
+                foreach (var pair in _itemDict)
+                    pair.Value.SetAnchor(Top, Top);
+            SetPivot(content, Top);
+            
+            ExecuteInNextFrame(() =>
+            {
+                boundHeight = content.sizeDelta.y;
+                normalizedPosition = normPos;
+                _sign = 1;
             });
         }
-    }
-    
-    /// <summary>
-    /// 复用 Content 当前第一个子物体
-    /// </summary>
-    /// <param name="index">复用后对应的数据下标</param>
-    private void ReuseFront(int index)
-    {
-        var front = _content.GetChild(0).GetComponent<IScrollViewItem>();
-        var back = _content.GetChild(_items.Count - 1).GetComponent<IScrollViewItem>();
-            
-        front.Refresh(_datas[index]);
-            
-        DoInNextFrame(() =>
+
+        private int _sign = 1;
+        
+        /// <summary>
+        /// 复用 Content 当前第一个子物体
+        /// </summary>
+        /// <param name="index">复用后对应的数据下标</param>
+        private void ReuseFront(int index)
         {
-            front.RectTrans.anchoredPosition = back.RectTrans.anchoredPosition - Vector2.up * (back.Height + _spacing);
+            var front = _itemDict[content.GetChild(0).name];
+            var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
+            
+            front.Refresh(_dataList[index]);
+            
+            AdjustContentBound(front, Vector2.up);
+            boundHeight -= front.Height;
+ 
             front.RectTrans.SetAsLastSibling();
-            _content.sizeDelta += Vector2.up * (front.Height + _spacing);
-        });
-    }
+            ExecuteInNextFrame(() =>
+            {
+                boundHeight += front.Height;
+                front.RectTrans.anchoredPosition = back.RectTrans.anchoredPosition - Vector2.up * (back.Height + _spacing); 
+            });
+        }
     
-    /// <summary>
-    /// 复用 Content 当前最后一个子物体
-    /// </summary>
-    /// <param name="index">复用后对应的数据下标</param>
-    private void ReuseBack(int index)
-    {
-        var front = _content.GetChild(0).GetComponent<IScrollViewItem>();
-        var back = _content.GetChild(_items.Count - 1).GetComponent<IScrollViewItem>();
-            
-        _content.sizeDelta -= Vector2.up * (back.Height + _spacing);
-        back.Refresh(_datas[index]);
-            
-        DoInNextFrame(() =>
+        /// <summary>
+        /// 复用 Content 当前最后一个子物体
+        /// </summary>
+        /// <param name="index">复用后对应的数据下标</param>
+        private void ReuseBack(int index)
         {
-            back.RectTrans.anchoredPosition = front.RectTrans.anchoredPosition + Vector2.up * (back.Height + _spacing);
+            var front = _itemDict[content.GetChild(0).name];
+            var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
+            
+            back.Refresh(_dataList[index]);
+            
+            AdjustContentBound(back, Vector2.down);
+            boundHeight -= back.Height;
+            
             back.RectTrans.SetAsFirstSibling();
-        });
-    }
-    
-    /// <summary>
-    /// 判断第一项或者最后一项，是否超出显示窗口
-    /// </summary>
-    /// <param name="itemRect">待判断的 RectTransform</param>
-    /// <param name="checkTop">是否是检测顶部</param>
-    /// <returns>是否超出显示窗口</returns>
-    private bool IsOutOfViewport(RectTransform itemRect, bool checkTop = true)
-    {
-        itemRect.GetWorldCorners(_corners);
-        var itemBottom = _corners[0].y;
-        var itemTop = _corners[1].y;
-            
-        _scrollRect.viewport.GetWorldCorners(_corners);
-        var viewportTop = _corners[1].y;
-        var viewportBottom = _corners[0].y;
-
-        return checkTop ? itemBottom > viewportTop : itemTop < viewportBottom;
-    }
-    
-    private void OnScrollRectValueChanged(Vector2 value)
-    {
-        var front = _content.GetChild(0).GetComponent<IScrollViewItem>();
-        var back = _content.GetChild(_items.Count - 1).GetComponent<IScrollViewItem>();
-            
-        if (_scrollRect.velocity.y > 0 && _backIndex < _datas.Count && IsOutOfViewport(front.RectTrans))
-        {
-            ReuseFront(_backIndex++);
-            ++_frontIndex;
+            ExecuteInNextFrame(() =>
+            {
+                boundHeight += back.Height;
+                back.RectTrans.anchoredPosition = front.RectTrans.anchoredPosition + Vector2.up * (back.Height + _spacing);
+            });
         }
-        else if (_scrollRect.velocity.y < 0 && _frontIndex > 0 && IsOutOfViewport(back.RectTrans, false))
+        
+        /// 调整 Content 的边界
+        private void AdjustContentBound(IScrollViewItem item, Vector2 direction)
         {
-            ReuseBack(--_frontIndex);
-            --_backIndex;
+            var amount = item.Height + _spacing;
+            
+            if (content.sizeDelta.y - amount < boundHeight && _sign * direction.y < 0 )
+            {
+                if (content.pivot != Bottom)
+                {
+                    m_ContentStartPosition -= SetPivot(content, Bottom);
+            
+                    foreach (var pair in _itemDict)
+                        pair.Value.SetAnchor(Bottom, Bottom);
+                }
+                else
+                {
+                    m_ContentStartPosition -= SetPivot(content, Top);
+                    
+                    foreach (var pair in _itemDict)
+                        pair.Value.SetAnchor(Top, Top);
+                }
+
+                _sign = -_sign;
+            }
+            
+            if (_sign * direction.y > 0)
+                ExecuteInNextFrame(() => content.sizeDelta += (item.Height + _spacing) * _sign * direction);
+            else
+                content.sizeDelta += amount * _sign * direction;
         }
-    }
 
-    
-    /// <summary>
-    /// 下一帧执行操作
-    /// </summary>
-    /// <param name="operation">操作委托</param>
-    private void DoInNextFrame(Action operation)
-    {
-        StartCoroutine(Operation());
-        return;
-
-        IEnumerator Operation()
+        public override void OnDrag(PointerEventData eventData)
         {
-            yield return null;
-            operation?.Invoke();
+            ReuseItem(eventData);
+            
+            base.OnDrag(eventData);
+        }
+
+        /// <summary>
+        /// 判断第一项或者最后一项，是否超出显示窗口
+        /// </summary>
+        /// <param name="itemRect">待判断的 RectTransform</param>
+        /// <param name="checkTop">是否是检测顶部</param>
+        /// <returns>是否超出显示窗口</returns>
+        private bool IsOutOfViewport(RectTransform itemRect, bool checkTop = true)
+        {
+            itemRect.GetWorldCorners(_corners);
+            var itemBottom = _corners[0].y;
+            var itemTop = _corners[1].y;
+            
+            viewport.GetWorldCorners(_corners);
+            var viewportTop = _corners[1].y;
+            var viewportBottom = _corners[0].y;
+    
+            return checkTop ? itemBottom > viewportTop : itemTop < viewportBottom;
+        }
+    
+        private void ReuseItem(PointerEventData pointer)
+        {
+            if (!_dragging) return;
+            
+            _fitter.enabled = false;
+            _group.enabled = false;
+            
+            var delta = pointer.position.y - _lastPointerPosition.y;
+            if (delta != 0)
+                _lastPointerPosition = pointer.position; 
+        
+            var front = _itemDict[content.GetChild(0).name];
+            var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
+        
+            if (delta > 0 && _backIndex < _dataList.Count && IsOutOfViewport(front.RectTrans))
+            {
+                ReuseFront(_backIndex++);
+                ++_frontIndex;
+            }
+            else if (delta < 0 && _frontIndex > 0 && IsOutOfViewport(back.RectTrans, false))
+            {
+                ReuseBack(--_frontIndex);
+                --_backIndex;
+            }
+        }
+    
+        /// <summary>
+        /// 下一帧执行操作
+        /// </summary>
+        /// <param name="operation">操作委托</param>
+        private void ExecuteInNextFrame(Action operation)
+        {
+            StartCoroutine(Operation());
+            return;
+    
+            IEnumerator Operation()
+            {
+                yield return null;
+                operation?.Invoke();
+            }
+        }
+
+        private Vector2 SetPivot(RectTransform target, Vector2 pivot)
+        {
+            var pivotOffset = target.pivot - pivot;
+
+            var offset = Vector2.Scale(pivotOffset, target.sizeDelta);
+                
+            target.pivot = pivot;
+
+            return offset;
+        }
+
+        private bool _dragging;
+        private Vector2 _lastPointerPosition;
+        public override void OnBeginDrag(PointerEventData eventData)
+        {
+            base.OnBeginDrag(eventData);
+            _lastPointerPosition = eventData.position;
+            _dragging = true;
+        }
+
+        public override void OnEndDrag(PointerEventData eventData)
+        {
+            base.OnEndDrag(eventData);
+            
+            _dragging = false;
         }
     }
 }
