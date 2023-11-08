@@ -213,16 +213,16 @@ namespace EasyScrollViewer
             return checkTop ? itemBottom > viewportTop : itemTop < viewportBottom;
         }
     
-        private void ReuseItem(PointerEventData pointer)
+        private void ReuseItem(PointerEventData eventData)
         {
             if (!_dragging) return;
             
             _fitter.enabled = false;
             _group.enabled = false;
             
-            var delta = pointer.position.y - _lastPointerPosition.y;
+            var delta = eventData.position.y - _lastPointerPosition.y;
             if (delta != 0)
-                _lastPointerPosition = pointer.position; 
+                _lastPointerPosition = eventData.position; 
         
             var front = _itemDict[content.GetChild(0).name];
             var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
