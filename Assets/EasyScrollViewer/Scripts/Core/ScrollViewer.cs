@@ -10,7 +10,7 @@ namespace EasyScrollViewer
     public class ScrollViewer : ScrollRect
     {
         public GameObject itemGameObject;
-        private List<ScrollViewItemData> _dataList = new();
+        private List<ScrollViewItemData> _dataList;
         private readonly Dictionary<string, IScrollViewItem> _itemDict = new();
         
         private ContentSizeFitter _fitter;
@@ -71,10 +71,13 @@ namespace EasyScrollViewer
         
         public void Refresh(int startIndex, Vector2 normPos)
         {
+            if (_dataList == null) Debug.LogWarning("ScrollViewer is not initialized!");
+            
             _activatedItemNum = Mathf.Min(_maxItemNum, _dataList.Count);
             _frontIndex = Mathf.Min(startIndex, _dataList.Count - _activatedItemNum);
             _backIndex = Mathf.Min(_frontIndex + _activatedItemNum, _dataList.Count);
-
+            
+            // 激活 Content 的 LayoutGroup 和 ContentSizeFitter 帮助计算边界
             _group.enabled = true;
             _fitter.enabled = true;
         
@@ -91,10 +94,13 @@ namespace EasyScrollViewer
             }
             
             if (_itemDict["Item"].RectTrans.anchorMin != Top)
+            {
                 foreach (var pair in _itemDict)
                     pair.Value.SetAnchor(Top, Top);
-            SetPivot(content, Top);
-            
+                
+            }
+            m_ContentStartPosition -=SetPivot(content, Top);
+             
             ExecuteEndOfFrame(() =>
             {
                 boundHeight = content.sizeDelta.y;
