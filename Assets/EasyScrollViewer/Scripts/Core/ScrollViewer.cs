@@ -95,7 +95,7 @@ namespace EasyScrollViewer
                     pair.Value.SetAnchor(Top, Top);
             SetPivot(content, Top);
             
-            ExecuteInNextFrame(() =>
+            ExecuteEndOfFrame(() =>
             {
                 boundHeight = content.sizeDelta.y;
                 normalizedPosition = normPos;
@@ -116,11 +116,11 @@ namespace EasyScrollViewer
             
             front.Refresh(_dataList[index]);
             
-            AdjustContentBound(front, Vector2.up);
             boundHeight -= front.Height;
+            AdjustContentBound(front, Vector2.up);
  
             front.RectTrans.SetAsLastSibling();
-            ExecuteInNextFrame(() =>
+            ExecuteEndOfFrame(() =>
             {
                 boundHeight += front.Height;
                 front.RectTrans.anchoredPosition = back.RectTrans.anchoredPosition - Vector2.up * (back.Height + _spacing); 
@@ -138,11 +138,11 @@ namespace EasyScrollViewer
             
             back.Refresh(_dataList[index]);
             
-            AdjustContentBound(back, Vector2.down);
             boundHeight -= back.Height;
+            AdjustContentBound(back, Vector2.down);
             
             back.RectTrans.SetAsFirstSibling();
-            ExecuteInNextFrame(() =>
+            ExecuteEndOfFrame(() =>
             {
                 boundHeight += back.Height;
                 back.RectTrans.anchoredPosition = front.RectTrans.anchoredPosition + Vector2.up * (back.Height + _spacing);
@@ -156,6 +156,13 @@ namespace EasyScrollViewer
             
             if (content.sizeDelta.y - amount < boundHeight && _sign * direction.y < 0 )
             {
+                // 因为 boundHeight 还没有加上变化后的 item 的高度，
+                // 如果变化后的 item 高度大于减少的高度，则实际上 content 边界没有缩小到 items 边界内。
+                // 为此这里需要 ForceRebuild 一下。
+                LayoutRebuilder.ForceRebuildLayoutImmediate(item.RectTrans);
+                if (content.sizeDelta.y - amount > boundHeight + item.Height)
+                    return;
+                
                 if (content.pivot != Bottom)
                 {
                     m_ContentStartPosition -= SetPivot(content, Bottom);
@@ -175,7 +182,7 @@ namespace EasyScrollViewer
             }
             
             if (_sign * direction.y > 0)
-                ExecuteInNextFrame(() => content.sizeDelta += (item.Height + _spacing) * _sign * direction);
+                ExecuteEndOfFrame(() => content.sizeDelta += (item.Height + _spacing) * _sign * direction);
             else
                 content.sizeDelta += amount * _sign * direction;
         }
@@ -236,14 +243,14 @@ namespace EasyScrollViewer
         /// 下一帧执行操作
         /// </summary>
         /// <param name="operation">操作委托</param>
-        private void ExecuteInNextFrame(Action operation)
+        private void ExecuteEndOfFrame(Action operation)
         {
             StartCoroutine(Operation());
             return;
     
             IEnumerator Operation()
             {
-                yield return null;
+                yield return new WaitForEndOfFrame();
                 operation?.Invoke();
             }
         }
