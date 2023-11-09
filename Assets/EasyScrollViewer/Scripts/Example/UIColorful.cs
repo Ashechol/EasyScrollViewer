@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using EasyScrollViewer;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,8 +5,6 @@ using UnityEngine.UI;
 public class UIColorful : MonoBehaviour, IScrollViewItem
 {
     private Image _img;
-    
-    public Vector3 LastPosition { get; set; }
 
     public RectTransform RectTrans { get; private set; }
 
@@ -21,16 +17,13 @@ public class UIColorful : MonoBehaviour, IScrollViewItem
         Fitter = GetComponent<ContentSizeFitter>();
     }
     
-    public void Refresh(ScrollViewItemData data)
+    public void Refresh(ColorfulData data)
     {
-        if (data is ColorfulData colorfulData)
-        {
-            _img.color = colorfulData.color;
-        }
+        _img.color = data.color;
     }
 }
 
-public class ColorfulData : ScrollViewItemData
+public struct ColorfulData
 {
     public Color color;
 

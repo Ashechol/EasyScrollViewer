@@ -524,11 +524,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
---- !u!1 &1088231411 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 9053720142496889848, guid: 5bc82a4e1ec667a4fb2e4b38a3091656, type: 3}
-  m_PrefabInstance: {fileID: 960801267}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1484533008
 GameObject:
   m_ObjectHideFlags: 0
@@ -540,8 +535,8 @@ GameObject:
   - component: {fileID: 1484533009}
   - component: {fileID: 1484533013}
   - component: {fileID: 1484533012}
-  - component: {fileID: 1484533014}
   - component: {fileID: 1484533015}
+  - component: {fileID: 1484533016}
   m_Layer: 5
   m_Name: Scroll View
   m_TagString: Untagged
@@ -608,7 +603,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1484533008}
   m_CullTransparentMesh: 1
---- !u!114 &1484533014
+--- !u!114 &1484533015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1484533008}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b18ebaf171694890b43428fe13a5b733, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1484533016
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -638,23 +645,8 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
-  itemGameObject: {fileID: 1088231411}
-  itemMinHeight: 75
---- !u!114 &1484533015
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1484533008}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b18ebaf171694890b43428fe13a5b733, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  r: 0
-  g: 0
-  b: 0
+  itemGameObject: {fileID: 0}
+  itemMinHeight: 0
 --- !u!1 &1702987202
 GameObject:
   m_ObjectHideFlags: 0
@@ -693,7 +685,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0.000030518}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1702987204
 MonoBehaviour:

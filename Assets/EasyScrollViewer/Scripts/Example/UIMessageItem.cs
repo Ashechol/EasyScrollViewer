@@ -6,8 +6,6 @@ using TMPro;
 public class UIMessageItem : MonoBehaviour, IScrollViewItem
 {
     private TextMeshProUGUI _textMesh;
-    
-    public Vector3 LastPosition { get; set; }
 
     public RectTransform RectTrans { get; private set; }
 
@@ -41,19 +39,16 @@ public class UIMessageItem : MonoBehaviour, IScrollViewItem
         Refresh($"[{senderName}]\n{message}");
     }
     
-    public void Refresh(ScrollViewItemData data)
+    public void Refresh(MessageData data)
     {
-        if (data is MessageData messageData)
-        {
-            Refresh(messageData.senderName, messageData.message);
-        }
+        Refresh(data.senderName, data.message);
     }
 }
 
-public class MessageData: ScrollViewItemData
+public struct MessageData
 {
-    public string senderName;
-    public string message;
+    public readonly string senderName;
+    public readonly string message;
 
     public MessageData(string senderName, string message)
     {

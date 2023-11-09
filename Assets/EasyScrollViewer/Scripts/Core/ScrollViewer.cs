@@ -7,10 +7,10 @@ using UnityEngine.UI;
 
 namespace EasyScrollViewer
 {
-    public class ScrollViewer : ScrollRect
+    public class ScrollViewer: ScrollRect
     {
         public GameObject itemGameObject;
-        private List<ScrollViewItemData> _dataList;
+        private IDataSource _dataSource;
         private readonly Dictionary<string, IScrollViewItem> _itemDict = new();
     
         private float _spacing;
@@ -55,13 +55,12 @@ namespace EasyScrollViewer
         }
 
         /// 初始化
-        public void Initialize(List<ScrollViewItemData> dataList)
+        public void Initialize(IDataSource dataSource)
         {
             _frontIndex = 0;
             _backIndex = 0;
-            
-            if (itemMinHeight == 0)
-                Debug.LogWarning("[ScrollViewer]: 请设置列表每项的最小大小");
+
+            itemMinHeight = itemGameObject.GetComponent<LayoutElement>().minHeight;
             
             var maxNum = Math.Ceiling(viewport.rect.height / (itemMinHeight + _spacing)) + 1;
             
@@ -69,7 +68,7 @@ namespace EasyScrollViewer
             for (var i = 1; i < maxNum; ++i)
             {
                 var item = Instantiate(itemGameObject, content).GetComponent<IScrollViewItem>();
-                item.SetName($"Item {i.ToString()}");
+                item.Name = $"Item {i.ToString()}";
                 item.SetActive(false);
                 _itemDict.Add(item.Name, item);
             }
@@ -80,23 +79,28 @@ namespace EasyScrollViewer
         
             _maxItemNum = _itemDict.Count;
         
-            _dataList = dataList;
+            _dataSource = dataSource;
         }
         
         public void Refresh(int startIndex, Vector2 normPos)
         {
-            if (_dataList == null) Debug.LogWarning("ScrollViewer is not initialized!");
-            
-            _activatedItemNum = Mathf.Min(_maxItemNum, _dataList.Count);
-            _frontIndex = Mathf.Min(startIndex, _dataList.Count - _activatedItemNum);
-            _backIndex = Mathf.Min(_frontIndex + _activatedItemNum, _dataList.Count);
+            if (_dataSource == null)
+            {
+                Debug.LogWarning("ScrollViewer is not initialized!");
+                return;
+            }
+
+            var dataCount = _dataSource.Count;
+            _activatedItemNum = Mathf.Min(_maxItemNum, dataCount);
+            _frontIndex = Mathf.Min(startIndex, dataCount - _activatedItemNum);
+            _backIndex = Mathf.Min(_frontIndex + _activatedItemNum, dataCount);
         
             var items = GetComponentsInChildren<IScrollViewItem>(true);
         
             for (var i = 0; i < _activatedItemNum; ++i)
             {
                 items[i].SetActive(true);
-                items[i].Refresh(_dataList[_frontIndex + i]);
+                _dataSource.RefreshItem(items[i], _frontIndex + i);
             }
             for (var i = _activatedItemNum; i < _maxItemNum; ++i)
             {
@@ -122,20 +126,9 @@ namespace EasyScrollViewer
         {
             var front = _itemDict[content.GetChild(0).name];
 
-            Vector2 offset;
-            if (content.pivot != Top)
-            {
-                offset = SetPivot(content, Top);
-                
-                if (_dragging)
-                    m_ContentStartPosition -= offset;
-                else
-                    SetContentAnchoredPosition(content.anchoredPosition - offset);
-                
-                _prevPosition -= offset;
-            }
+            ChangeContentPivot(Top);
 
-            offset = Vector2.up * (front.Height + _spacing);
+            var offset = Vector2.up * (front.Height + _spacing);
             if (_dragging)
                 m_ContentStartPosition -= offset;
             else
@@ -144,8 +137,7 @@ namespace EasyScrollViewer
             _prevPosition -= offset;
                 
             front.RectTrans.SetAsLastSibling();
-            
-            ExecuteEndOfFrame(() => front.Refresh(_dataList[index]));
+            _dataSource.RefreshItem(front, index);
         }
     
         /// <summary>
@@ -155,21 +147,10 @@ namespace EasyScrollViewer
         private void ReuseBack(int index)
         {
             var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
+
+            ChangeContentPivot(Bottom);
             
-            Vector2 offset;
-            if (content.pivot != Bottom)
-            {
-                offset = SetPivot(content, Bottom);
-                
-                if (_dragging)
-                    m_ContentStartPosition -= offset;
-                else
-                    SetContentAnchoredPosition(content.anchoredPosition - offset);
-                
-                _prevPosition -= offset;
-            }
-            
-            offset = Vector2.up * (back.Height + _spacing);
+            var offset = Vector2.up * (back.Height + _spacing);
             if (_dragging)
                 m_ContentStartPosition += offset;
             else
@@ -178,8 +159,7 @@ namespace EasyScrollViewer
             _prevPosition += offset;
             
             back.RectTrans.SetAsFirstSibling();
-            
-            ExecuteEndOfFrame(() => back.Refresh(_dataList[index]));
+            _dataSource.RefreshItem(back, index);
         }
 
         public override void OnDrag(PointerEventData eventData)
@@ -213,7 +193,7 @@ namespace EasyScrollViewer
             var front = _itemDict[content.GetChild(0).name];
             var back = _itemDict[content.GetChild(_activatedItemNum - 1).name];
         
-            if (delta > 0 && _backIndex < _dataList.Count && IsOutOfViewport(front.RectTrans))
+            if (delta > 0 && _backIndex < _dataSource.Count && IsOutOfViewport(front.RectTrans))
             {
                 ReuseFront(_backIndex++);
                 ++_frontIndex;
@@ -232,6 +212,20 @@ namespace EasyScrollViewer
                 _lastPointerPosition = eventData.position;
 
             ReuseItem(delta);
+        }
+
+        protected void ChangeContentPivot(Vector2 pivot)
+        {
+            if (content.pivot == pivot) return;
+            
+            var offset = SetPivot(content, pivot);
+                
+            if (_dragging)
+                m_ContentStartPosition -= offset;
+            else
+                SetContentAnchoredPosition(content.anchoredPosition - offset);
+                
+            _prevPosition -= offset;
         }
     
         /// <summary>
