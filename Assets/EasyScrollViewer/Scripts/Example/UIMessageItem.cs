@@ -5,9 +5,11 @@ using TMPro;
 
 public class UIMessageItem : MonoBehaviour, IScrollViewItem
 {
+    public float minHeight;
     private TextMeshProUGUI _textMesh;
 
     public RectTransform RectTrans { get; private set; }
+    public float MinHeightOrWidth => minHeight;
 
     public ContentSizeFitter Fitter { get; private set; }
 
@@ -16,7 +18,6 @@ public class UIMessageItem : MonoBehaviour, IScrollViewItem
         _textMesh = GetComponentInChildren<TextMeshProUGUI>();
         
         RectTrans = GetComponent<RectTransform>();
-        Fitter = GetComponent<ContentSizeFitter>();
     }
     
     /// <summary>

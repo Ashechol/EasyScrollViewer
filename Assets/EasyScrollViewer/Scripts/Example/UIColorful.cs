@@ -4,9 +4,11 @@ using UnityEngine.UI;
 
 public class UIColorful : MonoBehaviour, IScrollViewItem
 {
+    public float minHeight;
     private Image _img;
 
     public RectTransform RectTrans { get; private set; }
+    public float MinHeightOrWidth => minHeight;
 
     public ContentSizeFitter Fitter { get; private set; }
     

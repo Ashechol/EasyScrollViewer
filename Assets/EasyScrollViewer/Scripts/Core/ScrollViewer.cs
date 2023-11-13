@@ -7,9 +7,14 @@ using UnityEngine.UI;
 
 namespace EasyScrollViewer
 {
+    public enum ScrollType
+    {
+        Vertical,
+        Horizontal
+    }
+    
     public class ScrollViewer: ScrollRect
     {
-        public GameObject itemGameObject;
         private IDataSource _dataSource;
         private readonly Dictionary<string, IScrollViewItem> _itemDict = new();
     
@@ -18,7 +23,6 @@ namespace EasyScrollViewer
         private int _backIndex;
         private int _activatedItemNum;
         private int _maxItemNum;
-        public float itemMinHeight;
 
         private Vector2 _prevPosition;
     
@@ -32,8 +36,6 @@ namespace EasyScrollViewer
             base.Awake();
             
             _spacing = content.GetComponent<VerticalLayoutGroup>().spacing;
-    
-            itemGameObject = content.GetChild(0).gameObject;
         }
 
         protected override void LateUpdate()
@@ -59,23 +61,22 @@ namespace EasyScrollViewer
         {
             _frontIndex = 0;
             _backIndex = 0;
-
-            itemMinHeight = itemGameObject.GetComponent<LayoutElement>().minHeight;
             
-            var maxNum = Math.Ceiling(viewport.rect.height / (itemMinHeight + _spacing)) + 1;
+            var scrollItem = content.GetChild(0).GetComponent<IScrollViewItem>();
+            
+            var maxNum = Math.Ceiling(viewport.rect.height / (scrollItem.MinHeightOrWidth + _spacing)) + 2;
             
             // 预加载列表项
             for (var i = 1; i < maxNum; ++i)
             {
-                var item = Instantiate(itemGameObject, content).GetComponent<IScrollViewItem>();
-                item.Name = $"Item {i.ToString()}";
+                var item = Instantiate(scrollItem.RectTrans.gameObject, content).GetComponent<IScrollViewItem>();
+                item.Name = $"{scrollItem.Name} {i.ToString()}";
                 item.SetActive(false);
                 _itemDict.Add(item.Name, item);
             }
-        
-            itemGameObject.name = "Item";
-            itemGameObject.SetActive(false);
-            _itemDict.Add("Item", itemGameObject.GetComponent<IScrollViewItem>());
+            
+            scrollItem.SetActive(false);
+            _itemDict.Add(scrollItem.Name, scrollItem);
         
             _maxItemNum = _itemDict.Count;
         
@@ -107,11 +108,10 @@ namespace EasyScrollViewer
                 items[i].SetActive(false);
             }
             
-            if (_itemDict["Item"].RectTrans.anchorMin != Top)
+            if (_itemDict[content.GetChild(0).name].RectTrans.anchorMin != Top)
             {
                 foreach (var pair in _itemDict)
                     pair.Value.SetAnchor(Top, Top);
-                
             }
             m_ContentStartPosition -=SetPivot(content, Top);
              

@@ -6,6 +6,8 @@ namespace EasyScrollViewer
     public interface IScrollViewItem
     {
         RectTransform RectTrans { get; }
+
+        float MinHeightOrWidth { get; }
         
         string Name
         {
